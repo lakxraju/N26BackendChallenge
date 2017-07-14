@@ -3,10 +3,6 @@ package com.n26.BackendChallenge.services;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/*public class N26PriorityBlockingQueue {
-
-}*/
-
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
