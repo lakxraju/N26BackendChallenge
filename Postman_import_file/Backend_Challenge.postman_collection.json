@@ -1,0 +1,42 @@
+{
+	"variables": [],
+	"info": {
+		"name": "Backend_Challenge",
+		"_postman_id": "0659486a-b911-fc6f-b10e-c91616c21703",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "http://localhost:8080/BackendChallenge/concurrentApp/transactions",
+			"request": {
+				"url": "http://localhost:8080/BackendChallenge/concurrentApp/transactions",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"amount\":60.0,\n\t\"timestamp\":1500052394041\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/BackendChallenge/concurrentApp/statistics",
+			"request": {
+				"url": "http://localhost:8080/BackendChallenge/concurrentApp/statistics",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
