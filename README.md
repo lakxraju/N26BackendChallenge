@@ -4,6 +4,7 @@ Contains my solution for Coding challenge for N26 Backend Developer position
 ## Setup Used:
 * Eclipse - Mars(Dynamic Web Module 3.1),  
 * Apache Tomcat 8.x . 
+* Java 8
 * Postman to manual test the APIs.  Didn't do automated testing. 
 * Added a collection(.json) file (inside "Postman_import_file" folder) to import sample requests for Postman.  
 
