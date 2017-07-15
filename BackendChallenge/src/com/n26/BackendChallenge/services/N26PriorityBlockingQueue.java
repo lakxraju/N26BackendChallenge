@@ -1,6 +1,7 @@
 package com.n26.BackendChallenge.services;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 
 /*public class N26PriorityBlockingQueue {
@@ -114,15 +115,14 @@ public class N26PriorityBlockingQueue<E> extends AbstractQueue<E>
  * */
     
     /**
-     * The following are the custom fields added for this Backend Challenge
-     * LinkedList can be replaced by custom implemetations of sorted List. That would make the runtime shorter. Current method of using timsort everytime is costlier. 
-     * 
+     * Stores all the amounts and the count of each amount in a map
      * */
-    private final List<Double> amountList = new LinkedList<Double>();
+    private SortedMap<Double,Integer> amountMap = new ConcurrentSkipListMap<Double, Integer>();
     private volatile Double average;
     private volatile Double sum = 0.0;
     private volatile Double min = Double.MAX_VALUE;
     private volatile Double max = Double.MIN_VALUE;
+    private volatile Long sizeOfAmountMap = (long)0;
     
     
     public Double getAverage() {
@@ -141,17 +141,58 @@ public class N26PriorityBlockingQueue<E> extends AbstractQueue<E>
 		return max;
 	}
 	
+	private void insertAmountIntoMap(Double amount){
+		ReentrantLock lock = this.lock;
+		lock.lock();
+		try{
+			if(amountMap.containsKey(amount)){
+				int count = amountMap.get(amount);
+				count++;
+				amountMap.put(amount, count);
+			}
+			else{
+				amountMap.put(amount, 1);
+			}
+			this.sizeOfAmountMap++;
+		notEmpty.signal();
+		}finally{
+			lock.unlock();
+		}
+		
+	}
+	
+	private void deleteAmountFromMap(Double amount){
+		ReentrantLock lock = this.lock;
+		lock.lock();
+		try{
+			if(amountMap.containsKey(amount)){
+				int count = amountMap.get(amount);
+				if(count != 1){
+					count--;
+					amountMap.put(amount, count);
+				}
+				else{
+					amountMap.remove(amount);
+				}
+				this.sizeOfAmountMap--;
+			}
+			notEmpty.signal();
+		}finally{
+			lock.unlock();
+		}
+	}
+	
 	
 	 
     /**
      * Add new object to the queue and the average list. In addition, it updates the statistics variables 
      * 1. Locks the object
      * 2. Updates the average list, statistics variables and the queue
-     * 3. Adds the element from average list
+     * 3. Adds the element to average map or increases the count
      * 4. Adds the object from queue
      * 5. Signals other threads
      * 6. In case of exception, unlocks the object
-     * Note: Implemented concurrency for both amount list and the queue together.
+     * Note: Implemented concurrency for both amount map and the queue together.
      * 
      * @author lakshminarayanan rajendran
      * @param current_epoch_millis current timestamp in epoch millis  
@@ -165,15 +206,12 @@ public class N26PriorityBlockingQueue<E> extends AbstractQueue<E>
     	try{
     		lock.lock();
 	    	this.sum = sum + txnBean.getAmount();
-	    	this.average = this.sum/(this.amountList.size()+1);
+	    	this.average = this.sum/(this.sizeOfAmountMap+1);
 	    	if(this.min > txnBean.getAmount())
 	    		this.min = txnBean.getAmount();
 	    	if(this.max < txnBean.getAmount())
 	    		this.max = txnBean.getAmount();
-	    	this.amountList.add(txnBean.getAmount());
-	    	
-	    	// Default implementation uses Timsort which is efficient when the list is already almost sorted
-	    	Collections.sort(this.amountList);
+	    	this.insertAmountIntoMap(txnBean.getAmount());
 	    	this.q.add((E)txnBean);
 	    	notEmpty.signal();
     	} finally{
@@ -188,12 +226,12 @@ public class N26PriorityBlockingQueue<E> extends AbstractQueue<E>
      * 1. Locks the object
      * 2. If the object is older than 60 seconds
      * 		a. Updates the average list, statistics variables and the queue
-     * 		b. Removes the element from average list
+     * 		b. Removes the element from average map or decrease the count by 1
      * 		c. Removes the object from queue
      * 		d. continue the loop until the head is not older than 60 seconds
      * 3. Signals other threads
      * 4. In case of exception, unlocks the object
-     * Note: Implemented concurrency for both amount list and the queue together
+     * Note: Implemented concurrency for both amount map and the queue together
      * 
      * @author lakshminarayanan rajendran
      * @param current_epoch_millis current timestamp in epoch millis  
@@ -210,26 +248,15 @@ public class N26PriorityBlockingQueue<E> extends AbstractQueue<E>
 	    		lock.lock();
 	    		TransactionBean removableBean = (TransactionBean)this.poll();
 	    		this.sum = this.sum - removableBean.getAmount();
-	    		this.average = (this.amountList.size()>0)?(this.sum / (this.amountList.size()-1)):0.0;
-	    		if(this.min == removableBean.getAmount())
-	    		{
-	    			this.amountList.remove(0);
-	    			if(this.amountList.size()>0)
-	    				this.min = this.amountList.get(0);
-	    			else
-	    				this.min = Double.MAX_VALUE;
+	    		this.deleteAmountFromMap(removableBean.getAmount());
+	    		this.average = (!this.amountMap.isEmpty())?(this.sum / this.sizeOfAmountMap):0.0;
+	    		if(!this.amountMap.isEmpty()){
+		    		this.min = this.amountMap.firstKey();
+		    		this.max = this.amountMap.lastKey();
 	    		}
-	    		else if(this.max == removableBean.getAmount())
-	    		{
-	    			this.amountList.remove(this.amountList.size()-1);
-	    			if(this.amountList.size()>0)
-	    				this.max = this.amountList.get(this.amountList.size()-1);
-	    			else
-	    				this.max = Double.MIN_VALUE;
-	    		}
-	    		else
-	    		{
-	    			this.amountList.remove(this.amountList.indexOf(removableBean.getAmount()));
+	    		else{
+	    			this.min = Double.MAX_VALUE;
+	    			this.max = Double.MIN_VALUE;
 	    		}
 	    		notEmpty.signal();
     		}

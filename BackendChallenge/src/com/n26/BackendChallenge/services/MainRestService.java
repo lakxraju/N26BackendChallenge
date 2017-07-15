@@ -20,7 +20,7 @@ public class MainRestService {
 	
 	/**
 	 * Variable to store transactions done in last 60 seconds 
-	 * It is a custom implementation(Lines 112 to 244 in N26PriorityBlockingQueue.java) of PriorityBlockingQueue and should not be used for objects which are not instance of TransactionBean
+	 * It is a custom implementation(Lines 112 to 274 in N26PriorityBlockingQueue.java) of PriorityBlockingQueue and should not be used for objects which are not instance of TransactionBean
 	 * 
 	 * Note: This REST service can be implemented in EJB singleton as well. Didn't really have time to use it.  
 	 * */
